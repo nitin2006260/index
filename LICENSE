@@ -1,24 +1,637 @@
-This is free and unencumbered software released into the public domain.
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NB Tele for Jaat and Bhraman Smaj</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #3390ec;
+            --secondary-color: #f5f5f5;
+            --tertiary-color: #e6ebee;
+            --text-color: #333;
+            --light-text: #8e8e8e;
+            --sent-message: #effdde;
+            --received-message: #ffffff;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            color: var(--text-color);
+            background-color: var(--tertiary-color);
+            overflow-x: hidden;
+        }
+        
+        .chat-container {
+            height: 100vh;
+            max-height: 2000px;
+        }
+        
+        .sidebar {
+            background-color: white;
+            border-right: 1px solid #e0e0e0;
+        }
+        
+        .chat-item {
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .chat-item:hover, .chat-item.active {
+            background-color: #f5f5f5;
+        }
+        
+        .chat-item-avatar {
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        
+        .main-header {
+            background-color: white;
+            border-bottom: 1px solid #e0e0e0;
+            height: 60px;
+        }
+        
+        .chat-area {
+            background-color: var(--tertiary-color);
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .message {
+            max-width: 80%;
+            padding: 8px 12px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            position: relative;
+            word-wrap: break-word;
+        }
+        
+        .message.sent {
+            background-color: var(--sent-message);
+            align-self: flex-end;
+            border-bottom-right-radius: 2px;
+        }
+        
+        .message.received {
+            background-color: var(--received-message);
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+        }
+        
+        .message-time {
+            font-size: 11px;
+            color: var(--light-text);
+            text-align: right;
+            margin-top: 4px;
+        }
+        
+        .input-area {
+            background-color: white;
+            border-top: 1px solid #e0e0e0;
+            padding: 8px 16px;
+        }
+        
+        .message-input {
+            resize: none;
+            overflow-y: auto;
+            max-height: 150px;
+        }
+        
+        .emoji-button, .attachment-button, .send-button {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .emoji-button:hover, .attachment-button:hover {
+            background-color: #f0f0f0;
+        }
+        
+        .send-button {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .send-button:hover {
+            background-color: #2980b9;
+        }
+        
+        .send-button:disabled {
+            background-color: #ccc;
+            cursor: default;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #4CAF50;
+            margin-right: 4px;
+        }
+        
+        /* Animation for new messages */
+        @keyframes messageAppear {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .new-message {
+            animation: messageAppear 0.3s ease-out;
+        }
+        
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: absolute;
+                left: -100%;
+                width: 80% !important;
+                transition: left 0.3s;
+                z-index: 10;
+                height: 100%;
+            }
+            
+            .sidebar.show {
+                left: 0;
+            }
+            
+            .main-content {
+                width: 100% !important;
+            }
+            
+            .burger-menu {
+                display: block !important;
+            }
+        }
+        
+        .burger-menu {
+            display: none;
+            cursor: pointer;
+        }
+        
+        /* Search bar */
+        .search-bar {
+            background-color: #f5f5f5;
+            border-radius: 20px;
+        }
+        
+        /* Loading animation */
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            padding: 6px 12px;
+            background-color: white;
+            border-radius: 12px;
+            align-self: flex-start;
+            margin-bottom: 8px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .typing-indicator.show {
+            opacity: 1;
+        }
+        
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            margin: 0 2px;
+            background-color: #bbb;
+            border-radius: 50%;
+            display: inline-block;
+            animation: typing 1.4s infinite ease-in-out both;
+        }
+        
+        .typing-dot:nth-child(1) {
+            animation-delay: 0s;
+        }
+        
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes typing {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.5); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container flex flex-row">
+        <!-- Sidebar -->
+        <div class="sidebar w-1/4 flex flex-col">
+            <!-- Sidebar Header -->
+            <div class="p-4 bg-white border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h1 class="text-xl font-bold">NB Tele</h1>
+                    <div class="flex items-center">
+                        <button class="p-2 rounded-full hover:bg-gray-100">
+                            <i class="fas fa-cog text-gray-500"></i>
+                        </button>
+                    </div>
+                </div>
+                <!-- Search Bar -->
+                <div class="search-bar mt-3 flex items-center p-2">
+                    <i class="fas fa-search text-gray-400 mr-2 ml-1"></i>
+                    <input type="text" placeholder="Search" class="bg-transparent outline-none w-full">
+                </div>
+            </div>
+            
+            <!-- Chats List -->
+            <div class="overflow-y-auto flex-grow">
+                <!-- Active chat -->
+                <div class="chat-item active p-3 flex items-start" onclick="switchChat('community-group')">
+                    <div class="chat-item-avatar mr-3 flex-shrink-0">JB</div>
+                    <div class="flex-grow">
+                        <div class="flex justify-between">
+                            <h3 class="font-bold">Jaat-Bhraman Community</h3>
+                            <span class="text-xs text-gray-400">12:45 PM</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <p class="text-sm text-gray-500 truncate">Welcome to our community group!</p>
+                            <div class="bg-green-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs">3</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Other chats -->
+                <div class="chat-item p-3 flex items-start" onclick="switchChat('rakesh-singh')">
+                    <div class="chat-item-avatar mr-3 flex-shrink-0" style="background-color: #8E44AD;">RS</div>
+                    <div class="flex-grow">
+                        <div class="flex justify-between">
+                            <h3 class="font-bold">Rakesh Singh</h3>
+                            <span class="text-xs text-gray-400">Yesterday</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <p class="text-sm text-gray-500 truncate">When is the next meeting?</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chat-item p-3 flex items-start" onclick="switchChat('priya-sharma')">
+                    <div class="chat-item-avatar mr-3 flex-shrink-0" style="background-color: #D35400;">PS</div>
+                    <div class="flex-grow">
+                        <div class="flex justify-between">
+                            <h3 class="font-bold">Priya Sharma</h3>
+                            <span class="text-xs text-gray-400">Monday</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <p class="text-sm text-gray-500 truncate">I'll share the documents soon</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chat-item p-3 flex items-start" onclick="switchChat('village-updates')">
+                    <div class="chat-item-avatar mr-3 flex-shrink-0" style="background-color: #27AE60;">VU</div>
+                    <div class="flex-grow">
+                        <div class="flex justify-between">
+                            <h3 class="font-bold">Village Updates</h3>
+                            <span class="text-xs text-gray-400">Last week</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <p class="text-sm text-gray-500 truncate">New irrigation project approved!</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chat-item p-3 flex items-start" onclick="switchChat('cultural-events')">
+                    <div class="chat-item-avatar mr-3 flex-shrink-0" style="background-color: #F39C12;">CE</div>
+                    <div class="flex-grow">
+                        <div class="flex justify-between">
+                            <h3 class="font-bold">Cultural Events</h3>
+                            <span class="text-xs text-gray-400">2 weeks ago</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <p class="text-sm text-gray-500 truncate">Festival preparations starting next month</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chat-item p-3 flex items-start" onclick="switchChat('education-committee')">
+                    <div class="chat-item-avatar mr-3 flex-shrink-0" style="background-color: #2980B9;">EC</div>
+                    <div class="flex-grow">
+                        <div class="flex justify-between">
+                            <h3 class="font-bold">Education Committee</h3>
+                            <span class="text-xs text-gray-400">3 weeks ago</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <p class="text-sm text-gray-500 truncate">Scholarship applications now open</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content w-3/4 flex flex-col">
+            <!-- Main Header -->
+            <div class="main-header p-3 flex items-center justify-between">
+                <div class="flex items-center">
+                    <div class="burger-menu mr-3">
+                        <i class="fas fa-bars text-gray-500"></i>
+                    </div>
+                    <div class="chat-item-avatar mr-3" id="current-chat-avatar">JB</div>
+                    <div>
+                        <h2 class="font-bold" id="current-chat-name">Jaat-Bhraman Community</h2>
+                        <div class="flex items-center text-sm text-gray-500">
+                            <div class="status-dot"></div>
+                            <span>245 members, 20 online</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex">
+                    <button class="p-2 rounded-full hover:bg-gray-100 mr-1">
+                        <i class="fas fa-search text-gray-500"></i>
+                    </button>
+                    <button class="p-2 rounded-full hover:bg-gray-100 mr-1">
+                        <i class="fas fa-phone text-gray-500"></i>
+                    </button>
+                    <button class="p-2 rounded-full hover:bg-gray-100">
+                        <i class="fas fa-ellipsis-v text-gray-500"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Chat Area -->
+            <div class="chat-area flex-grow" id="chat-area">
+                <div class="message received">
+                    <div class="message-content">Welcome to the Jaat-Bhraman Community group! This is a place for our community members to connect, share information, and support each other.</div>
+                    <div class="message-time">10:30 AM</div>
+                </div>
+                
+                <div class="message received">
+                    <div class="message-content">Important announcement: The annual community gathering is scheduled for next month. Please mark your calendars!</div>
+                    <div class="message-time">10:32 AM</div>
+                </div>
+                
+                <div class="message sent">
+                    <div class="message-content">Thank you for the information. I'll be attending the gathering. Is there anything specific we need to bring?</div>
+                    <div class="message-time">10:40 AM</div>
+                </div>
+                
+                <div class="message received">
+                    <div class="message-content">Just your presence is enough! But if you'd like to contribute to the community potluck dinner, you're welcome to bring a traditional dish.</div>
+                    <div class="message-time">10:45 AM</div>
+                </div>
+                
+                <div class="message received">
+                    <div class="message-content">We'll also be discussing the new community development projects, so bring your ideas!</div>
+                    <div class="message-time">10:47 AM</div>
+                </div>
+                
+                <div class="message sent">
+                    <div class="message-content">Great! I have some suggestions for the youth education program we discussed last time.</div>
+                    <div class="message-time">11:00 AM</div>
+                </div>
+                
+                <div class="typing-indicator" id="typing-indicator">
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                </div>
+            </div>
+            
+            <!-- Input Area -->
+            <div class="input-area flex items-end">
+                <button class="emoji-button mr-2">
+                    <i class="far fa-smile text-gray-500"></i>
+                </button>
+                <button class="attachment-button mr-2">
+                    <i class="fas fa-paperclip text-gray-500"></i>
+                </button>
+                <textarea id="message-input" class="message-input flex-grow border rounded-lg p-2 focus:outline-none focus:border-blue-400" placeholder="Type a message..."></textarea>
+                <button id="send-button" class="send-button ml-2" disabled>
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
 
-Anyone is free to copy, modify, publish, use, compile, sell, or
-distribute this software, either in source code form or as a compiled
-binary, for any purpose, commercial or non-commercial, and by any
-means.
+    <script>
+        // DOM Elements
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const chatArea = document.getElementById('chat-area');
+        const burgerMenu = document.querySelector('.burger-menu');
+        const sidebar = document.querySelector('.sidebar');
+        const typingIndicator = document.getElementById('typing-indicator');
+        
+        // Current chat data
+        const chats = {
+            'community-group': {
+                name: 'Jaat-Bhraman Community',
+                avatar: 'JB',
+                avatarColor: '#3390ec',
+                status: '245 members, 20 online'
+            },
+            'rakesh-singh': {
+                name: 'Rakesh Singh',
+                avatar: 'RS',
+                avatarColor: '#8E44AD',
+                status: 'online'
+            },
+            'priya-sharma': {
+                name: 'Priya Sharma',
+                avatar: 'PS',
+                avatarColor: '#D35400',
+                status: 'last seen recently'
+            },
+            'village-updates': {
+                name: 'Village Updates',
+                avatar: 'VU',
+                avatarColor: '#27AE60',
+                status: '178 members, 15 online'
+            },
+            'cultural-events': {
+                name: 'Cultural Events',
+                avatar: 'CE',
+                avatarColor: '#F39C12',
+                status: '120 members, 8 online'
+            },
+            'education-committee': {
+                name: 'Education Committee',
+                avatar: 'EC',
+                avatarColor: '#2980B9',
+                status: '45 members, 6 online'
+            }
+        };
+        
+        // Enable/disable send button based on input
+        messageInput.addEventListener('input', function() {
+            sendButton.disabled = !this.value.trim();
+        });
+        
+        // Send message on Enter (without Shift)
+        messageInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (!sendButton.disabled) {
+                    sendMessage();
+                }
+            }
+        });
+        
+        // Send message on button click
+        sendButton.addEventListener('click', sendMessage);
+        
+        // Toggle sidebar on mobile
+        burgerMenu.addEventListener('click', function() {
+            sidebar.classList.toggle('show');
+        });
+        
+        // Function to send a message
+        function sendMessage() {
+            const messageText = messageInput.value.trim();
+            if (!messageText) return;
+            
+            // Create and append new message
+            const messageElement = document.createElement('div');
+            messageElement.className = 'message sent new-message';
+            messageElement.innerHTML = `
+                <div class="message-content">${escapeHTML(messageText)}</div>
+                <div class="message-time">${getCurrentTime()}</div>
+            `;
+            chatArea.appendChild(messageElement);
+            
+            // Clear input
+            messageInput.value = '';
+            sendButton.disabled = true;
+            
+            // Scroll to bottom
+            chatArea.scrollTop = chatArea.scrollHeight;
+            
+            // Show typing indicator after a short delay
+            setTimeout(() => {
+                typingIndicator.classList.add('show');
+                chatArea.scrollTop = chatArea.scrollHeight;
+                
+                // Simulate response after a random delay
+                setTimeout(() => {
+                    typingIndicator.classList.remove('show');
+                    
+                    // Add mock response
+                    setTimeout(() => {
+                        addMockResponse(messageText);
+                    }, 500);
+                }, getRandomDelay(1000, 3000));
+            }, 500);
+        }
+        
+        // Function to add a mock response
+        function addMockResponse(userMessage) {
+            const responses = [
+                "Thank you for sharing that with the community!",
+                "We'll discuss this at the next meeting.",
+                "Great point! I'm sure others will find this helpful.",
+                "This is valuable information for our community members.",
+                "Let's organize a discussion on this topic soon.",
+                "Your input is always appreciated in our community.",
+                "I've noted this down for future reference."
+            ];
+            
+            const responseElement = document.createElement('div');
+            responseElement.className = 'message received new-message';
+            
+            // Choose a response based on user message content or select random
+            let responseText = responses[Math.floor(Math.random() * responses.length)];
+            
+            responseElement.innerHTML = `
+                <div class="message-content">${responseText}</div>
+                <div class="message-time">${getCurrentTime()}</div>
+            `;
+            
+            chatArea.appendChild(responseElement);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+        
+        // Function to switch between chats
+        function switchChat(chatId) {
+            // Update active chat styling
+            document.querySelectorAll('.chat-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+            
+            // Update header information
+            const chat = chats[chatId];
+            document.getElementById('current-chat-name').textContent = chat.name;
+            const avatar = document.getElementById('current-chat-avatar');
+            avatar.textContent = chat.avatar;
+            avatar.style.backgroundColor = chat.avatarColor;
+            
+            // Update status
+            document.querySelector('.main-header .text-sm').innerHTML = `
+                <div class="status-dot"></div>
+                <span>${chat.status}</span>
+            `;
+            
+            // Clear chat area and add a welcome message
+            chatArea.innerHTML = '';
+            
+            const welcomeMessage = document.createElement('div');
+            welcomeMessage.className = 'message received';
+            welcomeMessage.innerHTML = `
+                <div class="message-content">Welcome to ${chat.name}! This is the start of your conversation.</div>
+                <div class="message-time">${getCurrentTime()}</div>
+            `;
+            chatArea.appendChild(welcomeMessage);
+            
+            // Add typing indicator (hidden by default)
+            const typingIndicator = document.createElement('div');
+            typingIndicator.className = 'typing-indicator';
+            typingIndicator.id = 'typing-indicator';
+            typingIndicator.innerHTML = `
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+            `;
+            chatArea.appendChild(typingIndicator);
+            
+            // Hide sidebar on mobile after selection
+            sidebar.classList.remove('show');
+        }
+        
+        // Helper function to get current time
+        function getCurrentTime() {
+            const now = new Date();
+            return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        
+        // Helper function to get random delay
+        function getRandomDelay(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+        
+        // Helper function to escape HTML
+        function escapeHTML(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
 
-In jurisdictions that recognize copyright laws, the author or authors
-of this software dedicate any and all copyright interest in the
-software to the public domain. We make this dedication for the benefit
-of the public at large and to the detriment of our heirs and
-successors. We intend this dedication to be an overt act of
-relinquishment in perpetuity of all present and future rights to this
-software under copyright law.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
-OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-OTHER DEALINGS IN THE SOFTWARE.
-
-For more information, please refer to <https://unlicense.org>
